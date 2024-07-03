@@ -1,0 +1,17 @@
+[package]
+name = "dtools"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "d64lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "dtools"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+hex = "0.4.3"
+thiserror = "1.0"
