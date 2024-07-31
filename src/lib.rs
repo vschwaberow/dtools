@@ -58,7 +58,7 @@ pub fn ascii_to_petscii(ascii: &str) -> Vec<u8> {
         .map(|c| match c {
             ' '..='_' => c as u8,
             'a'..='z' => (c as u8) - 32,
-            _ => 0x3F, // '?'
+            _ => 0x3F, 
         })
         .collect()
 }
@@ -82,13 +82,11 @@ impl D64 {
     pub fn format(&mut self, disk_name: &str, disk_id: &str) -> Result<(), D64Error> {
         self.data.fill(0);
 
-        // Set up BAM (Block Availability Map)
         let mut bam = [0u8; 256];
-        bam[0] = 18; // Track of first directory sector
-        bam[1] = 1; // Sector of first directory sector
-        bam[2] = 0x41; // DOS version and format type
+        bam[0] = 18;
+        bam[1] = 1;
+        bam[2] = 0x41;
 
-        // Mark all sectors as free
         for track in 1..=self.tracks {
             let track_idx = (track - 1) as usize;
             let sectors = SECTORS_PER_TRACK[track_idx];
@@ -102,7 +100,6 @@ impl D64 {
             };
         }
 
-        // Reserve system tracks
         for track in 18..=19 {
             let track_idx = (track - 1) as usize;
             bam[4 + track_idx * 4] = 0;
@@ -111,7 +108,6 @@ impl D64 {
             bam[7 + track_idx * 4] = 0;
         }
 
-        // Set disk name and ID
         let disk_name_bytes = ascii_to_petscii(disk_name);
         let disk_id_bytes = ascii_to_petscii(disk_id);
         bam[144..144 + disk_name_bytes.len()].copy_from_slice(&disk_name_bytes);
@@ -119,9 +115,8 @@ impl D64 {
 
         self.write_sector(18, 0, &bam)?;
 
-        // Initialize directory
         let mut dir = [0u8; 256];
-        dir[1] = 0xFF; // No next sector
+        dir[1] = 0xFF; 
         self.write_sector(18, 1, &dir)?;
 
         Ok(())
@@ -247,7 +242,6 @@ impl D64 {
         let (mut track, mut sector) = self.find_free_sector()?;
         let mut remaining = content;
 
-        // Update directory entry
         let dir_entry = self.create_dir_entry(filename, track, sector)?;
         self.write_dir_entry(dir_entry)?;
 
@@ -346,7 +340,7 @@ impl D64 {
         sector: u8,
     ) -> Result<[u8; 32], D64Error> {
         let mut entry = [0u8; 32];
-        entry[2] = 0x82; // PRG file type
+        entry[2] = 0x82;
         entry[3] = track;
         entry[4] = sector;
         let name_bytes = ascii_to_petscii(filename);
@@ -401,8 +395,8 @@ impl BAM {
 
     fn to_sector_data(&self) -> Vec<u8> {
         let mut data = vec![0; 256];
-        data[0] = 18; // Track of first directory sector
-        data[1] = 1; // Sector of first directory sector
+        data[0] = 18; 
+        data[1] = 1; 
         data[2] = self.dos_type;
 
         for track in 0..self.tracks as usize {
@@ -428,7 +422,7 @@ impl BAM {
         let bit_idx = sector % 8;
 
         if self.bitmap[track_idx][byte_idx] & (1 << bit_idx) == 0 {
-            return Ok(()); // Sector is already allocated
+            return Ok(()); 
         }
 
         self.bitmap[track_idx][byte_idx] &= !(1 << bit_idx);
@@ -447,7 +441,7 @@ impl BAM {
         let bit_idx = sector % 8;
 
         if self.bitmap[track_idx][byte_idx] & (1 << bit_idx) != 0 {
-            return Ok(()); // Sector is already free
+            return Ok(());
         }
 
         self.bitmap[track_idx][byte_idx] |= 1 << bit_idx;
@@ -495,7 +489,7 @@ impl BAM {
     pub fn set_disk_name(&mut self, name: &str) {
         let name_bytes = ascii_to_petscii(name);
         self.disk_name[..name_bytes.len()].copy_from_slice(&name_bytes);
-        self.disk_name[name_bytes.len()..].fill(0xA0); // Fill remainder with PETSCII space
+        self.disk_name[name_bytes.len()..].fill(0xA0);
     }
 
     pub fn set_disk_id(&mut self, id: &str) {
