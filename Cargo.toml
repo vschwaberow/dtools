@@ -5,6 +5,8 @@ edition = "2021"
 license = "MIT"
 authors = ["Volker Schwaberow <volker@schwaberow.de>"]
 description = "A collection of tools for working with Commodore disk images"
+repository = "https://github.com/vschwaberow/dtools"
+homepage = "https://github.com/vschwaberow/dtools"
 
 [lib]
 name = "d64lib"
