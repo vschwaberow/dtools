@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: MIT
+// Project: dtools
+// File: src/main.rs
+// Author: Volker Schwaberow <volker@schwaberow.de>
+// Copyright (c) 2024 Volker Schwaberow
+
 use std::{fs::File, io::Write};
 
 use clap::{Parser, Subcommand};

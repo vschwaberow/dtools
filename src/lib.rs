@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: MIT
+// Project: dtools
+// File: src/lib.rs
+// Author: Volker Schwaberow <volker@schwaberow.de>
+// Copyright (c) 2024 Volker Schwaberow
+
+
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
 use thiserror::Error;

@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: MIT
+// Project: dtools
+// File: src/tests.rs
+// Author: Volker Schwaberow <volker@schwaberow.de>
+// Copyright (c) 2024 Volker Schwaberow
+
 use super::*;
 use std::io::Cursor;
 
