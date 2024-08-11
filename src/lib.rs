@@ -4,7 +4,6 @@
 // Author: Volker Schwaberow <volker@schwaberow.de>
 // Copyright (c) 2024 Volker Schwaberow
 
-
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
 use thiserror::Error;
@@ -65,7 +64,7 @@ pub fn ascii_to_petscii(ascii: &str) -> Vec<u8> {
         .map(|c| match c {
             ' '..='_' => c as u8,
             'a'..='z' => (c as u8) - 32,
-            _ => 0x3F, 
+            _ => 0x3F,
         })
         .collect()
 }
@@ -123,7 +122,7 @@ impl D64 {
         self.write_sector(18, 0, &bam)?;
 
         let mut dir = [0u8; 256];
-        dir[1] = 0xFF; 
+        dir[1] = 0xFF;
         self.write_sector(18, 1, &dir)?;
 
         Ok(())
@@ -200,23 +199,43 @@ impl D64 {
         let mut files = Vec::new();
         let dir_track = 18;
         let mut sector = 1;
+        let mut visited_sectors = std::collections::HashSet::new();
 
         loop {
+            if visited_sectors.contains(&(dir_track, sector)) {
+                return Err(D64Error::InvalidTrackSector);
+            }
+            visited_sectors.insert((dir_track, sector));
+
             let data = self.read_sector(dir_track, sector)?;
+
             for i in (0..256).step_by(32) {
                 let file_type = data[i + 2];
                 if file_type == 0 {
-                    break;
+                    continue;
                 }
                 if file_type != 0 && file_type & 0x07 != 0 {
-                    let name = petscii_to_ascii(&data[i + 5..i + 21]);
+                    let name_end = data[i + 5..i + 21]
+                        .iter()
+                        .position(|&x| x == 0xA0)
+                        .unwrap_or(16);
+                    let name = petscii_to_ascii(&data[i + 5..i + 5 + name_end]);
                     files.push(name);
                 }
             }
-            sector = data[1];
-            if sector == 0 {
+
+            let next_track = data[0];
+            let next_sector = data[1];
+
+            if next_track == 0 || (next_track == 18 && next_sector == 1) {
                 break;
             }
+
+            if next_track != 18 || next_sector >= SECTORS_PER_TRACK[17] {
+                return Err(D64Error::InvalidTrackSector);
+            }
+
+            sector = next_sector;
         }
 
         Ok(files)
@@ -402,8 +421,8 @@ impl BAM {
 
     fn to_sector_data(&self) -> Vec<u8> {
         let mut data = vec![0; 256];
-        data[0] = 18; 
-        data[1] = 1; 
+        data[0] = 18;
+        data[1] = 1;
         data[2] = self.dos_type;
 
         for track in 0..self.tracks as usize {
@@ -429,7 +448,7 @@ impl BAM {
         let bit_idx = sector % 8;
 
         if self.bitmap[track_idx][byte_idx] & (1 << bit_idx) == 0 {
-            return Ok(()); 
+            return Ok(());
         }
 
         self.bitmap[track_idx][byte_idx] &= !(1 << bit_idx);
