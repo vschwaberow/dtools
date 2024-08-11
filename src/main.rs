@@ -84,7 +84,7 @@ enum Commands {
     Extract {
         #[arg(short, long)]
         file: String,
-        #[arg(short, long)]
+        #[arg(short = 'n', long)]
         filename: String,
         #[arg(short, long)]
         output: String,
