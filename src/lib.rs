@@ -172,10 +172,17 @@ impl D64 {
             bam[6 + idx * 4] = 0;
             bam[7 + idx * 4] = 0;
         }
+        
+        bam[144..160].fill(0xA0);
+        
         let disk_name_bytes = ascii_to_petscii(disk_name);
+        let name_len = disk_name_bytes.len().min(16);
+        bam[144..144 + name_len].copy_from_slice(&disk_name_bytes[..name_len]);
+        
         let disk_id_bytes = ascii_to_petscii(disk_id);
-        bam[144..144 + disk_name_bytes.len()].copy_from_slice(&disk_name_bytes);
-        bam[162..164].copy_from_slice(&disk_id_bytes);
+        let id_len = disk_id_bytes.len().min(2);
+        bam[162..162 + id_len].copy_from_slice(&disk_id_bytes[..id_len]);
+        
         self.write_sector(18, 0, &bam)?;
         let mut dir = [0u8; 256];
         dir[1] = 0xFF;
@@ -375,20 +382,27 @@ impl D64 {
     fn find_file(&self, filename: &str) -> Result<(u8, u8), D64Error> {
         let dir_track = 18;
         let mut sector = 1;
+        let trimmed_filename = filename.trim();
+        
         loop {
             let data = self.read_sector(dir_track, sector)?;
             for i in (0..256).step_by(32) {
                 if data[i + 2] != 0 && data[i + 2] & 0x07 != 0 {
-                    let name = petscii_to_ascii(&data[i + 5..i + 21]);
-                    if name.trim() == filename {
+                    let name_end = data[i + 5..i + 21]
+                        .iter()
+                        .position(|&x| x == 0xA0)
+                        .unwrap_or(16);
+                    let name = petscii_to_ascii(&data[i + 5..i + 5 + name_end]);
+                    if name.trim() == trimmed_filename {
                         return Ok((data[i + 3], data[i + 4]));
                     }
                 }
             }
-            sector = data[1];
-            if sector == 0 {
+            let next_sector = data[1];
+            if next_sector == 0 {
                 break;
             }
+            sector = next_sector;
         }
         Err(D64Error::FileNotFound)
     }
@@ -430,8 +444,13 @@ impl D64 {
         entry[2] = 0x82;
         entry[3] = track;
         entry[4] = sector;
+        
+        entry[5..21].fill(0xA0);
+        
         let name_bytes = ascii_to_petscii(filename);
-        entry[5..5 + name_bytes.len()].copy_from_slice(&name_bytes);
+        let copy_len = name_bytes.len().min(16);
+        entry[5..5 + copy_len].copy_from_slice(&name_bytes[..copy_len]);
+        
         Ok(entry)
     }
 
@@ -550,7 +569,12 @@ impl BAM {
     }
 
     pub fn get_disk_name(&self) -> String {
-        petscii_to_ascii(&self.disk_name)
+        let end = self.disk_name
+            .iter()
+            .position(|&c| c == 0xA0)
+            .unwrap_or(self.disk_name.len());
+        let ascii = petscii_to_ascii(&self.disk_name[..end]);
+        ascii.trim().to_string()
     }
 
     pub fn get_disk_id(&self) -> String {
@@ -559,12 +583,14 @@ impl BAM {
 
     pub fn set_disk_name(&mut self, name: &str) {
         let name_bytes = ascii_to_petscii(name);
-        self.disk_name[..name_bytes.len()].copy_from_slice(&name_bytes);
-        self.disk_name[name_bytes.len()..].fill(0xA0);
+        self.disk_name.fill(0xA0);
+        let len = name_bytes.len().min(16);
+        self.disk_name[..len].copy_from_slice(&name_bytes[..len]);
     }
-
+    
     pub fn set_disk_id(&mut self, id: &str) {
         let id_bytes = ascii_to_petscii(id);
-        self.disk_id.copy_from_slice(&id_bytes[..2]);
+        let len = id_bytes.len().min(2);
+        self.disk_id[..len].copy_from_slice(&id_bytes[..len]);
     }
 }
